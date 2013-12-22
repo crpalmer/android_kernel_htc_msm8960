@@ -1205,3 +1205,4 @@ m7_ul                   MACH_M7_UL              M7_UL                   4308
 m4_ul			MACH_M4_UL		M4_UL			4490
 apq8064_mako		MACH_APQ8064_MAKO	APQ8064_MAKO		7800
 msm8930_evt		MACH_MSM8930_EVT	MSM8930_EVT		4558
+monarudo		MACH_MONARUDO		MONARUDO		4060
