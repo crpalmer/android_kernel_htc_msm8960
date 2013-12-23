@@ -294,13 +294,10 @@ void __init monarudo_mdp_writeback(struct memtype_reserve* reserve_table)
 #endif
 }
 
-static bool dsi_power_on = false;
 static bool resume_blk = false;
-static bool first_init = true;
 static bool backlight_gpio_is_on = true;
 
-static void 
-backlight_gpio_enable(bool on)
+static void backlight_gpio_enable(bool on)
 {
 	PR_DISP_DEBUG("monarudo's %s: request on=%d currently=%d\n", __func__, on, backlight_gpio_is_on);
 
@@ -332,11 +329,15 @@ backlight_gpio_on(void)
 	backlight_gpio_enable(true);
 }
 
+static int mipi_lcd_on = 1;
+static bool dsi_power_on = false;
+
 static int mipi_dsi_panel_power(int on)
 {
 	static struct regulator *reg_lvs5, *reg_l2;
 	static int gpio36, gpio37;
 	int rc;
+	static bool bPanelPowerOn = false;
 
 	pr_debug("%s: on=%d\n", __func__, on);
 
@@ -382,59 +383,40 @@ static int mipi_dsi_panel_power(int on)
 	}
 
 	if (on) {
-		if (!first_init) {
-			PR_DISP_DEBUG("monarudo's %s: turning on, previously initialized\n", __func__);
-			rc = regulator_set_optimum_mode(reg_l2, 100000);
-			if (rc < 0) {
-				pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
-				return -EINVAL;
-			}
-			rc = regulator_enable(reg_l2);
-			if (rc) {
-				pr_err("enable l2 failed, rc=%d\n", rc);
-				return -ENODEV;
-			}
-			rc = regulator_enable(reg_lvs5);
-			if (rc) {
-				pr_err("enable lvs5 failed, rc=%d\n", rc);
-				return -ENODEV;
-			}
+		PR_DISP_DEBUG("monarudo's %s: turning on, previously initialized\n", __func__);
+		rc = regulator_set_optimum_mode(reg_l2, 100000);
+		if (rc < 0) {
+			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+		rc = regulator_enable(reg_l2);
+		if (rc) {
+			pr_err("enable l2 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		rc = regulator_enable(reg_lvs5);
+		if (rc) {
+			pr_err("enable lvs5 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+
+		if (!mipi_lcd_on) {
 			hr_msleep(1);
 			gpio_set_value_cansleep(gpio37, 1);
 			hr_msleep(2);
 			gpio_set_value_cansleep(gpio36, 1);
 			hr_msleep(7);
 			gpio_set_value(LCD_RST, 1);
-
-			/* Workaround for 1mA */
-			msm_xo_mode_vote(wa_xo, MSM_XO_MODE_ON);
-			hr_msleep(10);
-
-			msm_xo_mode_vote(wa_xo, MSM_XO_MODE_OFF);
-		} else {
-			PR_DISP_DEBUG("monarudo's %s: turning on, initializing\n", __func__);
-			/*Regulator needs enable first time*/
-			rc = regulator_enable(reg_lvs5);
-			if (rc) {
-				pr_err("enable lvs5 failed, rc=%d\n", rc);
-				return -ENODEV;
-			}
-			rc = regulator_set_optimum_mode(reg_l2, 100000);
-			if (rc < 0) {
-				pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
-				return -EINVAL;
-			}
-			rc = regulator_enable(reg_l2);
-			if (rc) {
-				pr_err("enable l2 failed, rc=%d\n", rc);
-				return -ENODEV;
-			}
-			/* Workaround for 1mA */
-			msm_xo_mode_vote(wa_xo, MSM_XO_MODE_ON);
-			msleep(10);
-			msm_xo_mode_vote(wa_xo, MSM_XO_MODE_OFF);
 		}
+
+		/* Workaround for 1mA */
+		msm_xo_mode_vote(wa_xo, MSM_XO_MODE_ON);
+		hr_msleep(10);
+		msm_xo_mode_vote(wa_xo, MSM_XO_MODE_OFF);
+
+		bPanelPowerOn = true;
 	} else {
+		if (!bPanelPowerOn) return 0;
 		PR_DISP_DEBUG("monarudo's %s: turning off\n", __func__);
 		backlight_gpio_off();
 
@@ -456,6 +438,7 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("disable reg_l2 failed, rc=%d\n", rc);
 			return -ENODEV;
 		}
+		bPanelPowerOn = false;
 	}
 
 	return 0;
@@ -567,32 +550,31 @@ static struct dcs_cmd_req cmdreq;
 
 static int monarudo_lcd_on(struct platform_device *pdev)
 {
-	struct msm_fb_data_type *mfd;
+	struct msm_fb_data_type *mfd = platform_get_drvdata(pdev);
+	struct mipi_panel_info *mipi = &mfd->panel_info.mipi;
 
-	mfd = platform_get_drvdata(pdev);
 	if (!mfd)
 		return -ENODEV;
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
+	if (mipi_lcd_on)
+		return 0;
 
-	if(! first_init) {
-		struct mipi_panel_info *mipi = &mfd->panel_info.mipi;
+	PR_DISP_DEBUG("%s: turning on the display.\n", __func__);
 
-		PR_DISP_DEBUG("%s: turning on the display.\n", __func__);
+	if (mipi->mode == DSI_VIDEO_MODE) {
+		cmdreq.cmds = video_on_cmds;
+		cmdreq.cmds_cnt = video_on_cmds_count;
+		cmdreq.flags = CMD_REQ_COMMIT;
+		cmdreq.rlen = 0;
+		cmdreq.cb = NULL;
 
-		if (mipi->mode == DSI_VIDEO_MODE) {
-			cmdreq.cmds = video_on_cmds;
-			cmdreq.cmds_cnt = video_on_cmds_count;
-			cmdreq.flags = CMD_REQ_COMMIT;
-			cmdreq.rlen = 0;
-			cmdreq.cb = NULL;
+		mipi_dsi_cmdlist_put(&cmdreq);
 
-			mipi_dsi_cmdlist_put(&cmdreq);
-
-			PR_DISP_INFO("%s\n", __func__);
-		}
+		PR_DISP_INFO("%s\n", __func__);
 	}
-	first_init = false;
+
+	mipi_lcd_on = 1;
 
 	return 0;
 }
@@ -607,6 +589,10 @@ static int monarudo_lcd_off(struct platform_device *pdev)
 		return -ENODEV;
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
+	if (!mipi_lcd_on)
+		return 0;
+
+	mipi_lcd_on = 0;
 
 	resume_blk = true;
 
