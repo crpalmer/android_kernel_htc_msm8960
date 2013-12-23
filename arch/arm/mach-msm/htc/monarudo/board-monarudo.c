@@ -169,6 +169,8 @@ extern void hdmi_hpd_feature(int enable);
 #define TPA6185_I2C_SLAVE_ADDR	(0xC6 >> 1)
 #define RT5501_I2C_SLAVE_ADDR	(0xF0 >> 1)
 
+unsigned skuid;
+
 #define PM8XXX_GPIO_INIT(_gpio, _dir, _buf, _val, _pull, _vin, _out_strength, \
 			_func, _inv, _disable) \
 { \
@@ -4463,6 +4465,8 @@ static void __init monarudo_fixup(struct tag *tags, char **cmdline, struct memin
 		mi->bank[2].start = PHY_BASE_ADDR3;
 		mi->bank[2].size = (256 * 1024 * 1024);
 	}
+	skuid = parse_tag_skuid((const struct tag *)tags);
+	printk(KERN_INFO "MONARUDO_fixup:skuid=0x%x\n", skuid);
 }
 
 MACHINE_START(MONARUDO, "UNKNOWN")
