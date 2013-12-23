@@ -31,10 +31,6 @@
 
 static struct gpio_event_direct_entry monarudo_keypad_map_xc[] = {
 	{
-		.gpio = PWR_KEY_MSMz,
-		.code = KEY_POWER,
-	},
-	{
 		.gpio = VOL_DOWNz_XC,
 		.code = KEY_VOLUMEDOWN,
 	},
@@ -45,10 +41,6 @@ static struct gpio_event_direct_entry monarudo_keypad_map_xc[] = {
 };
 
 static struct gpio_event_direct_entry monarudo_keypad_map[] = {
-	{
-		.gpio = PWR_KEY_MSMz,
-		.code = KEY_POWER,
-	},
 	{
 		.gpio = VOL_DOWNz_XA_XB,
 		.code = KEY_VOLUMEDOWN,
