@@ -51,13 +51,6 @@ static struct gpio_event_direct_entry monarudo_keypad_map[] = {
 	},
 };
 
-uint32_t hw_clr_gpio_table[] = {
-	GPIO_CFG(RESET_EN_CLRz_XC, 0, GPIO_CFG_INPUT,
-		GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-	GPIO_CFG(RESET_EN_CLRz_XC, 0, GPIO_CFG_OUTPUT,
-		GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-};
-
 static struct gpio_event_input_info monarudo_keypad_power_info = {
 	.info.func = gpio_event_input_func,
 	.flags = GPIOEDF_PRINT_KEYS,

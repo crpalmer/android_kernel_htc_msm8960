@@ -19,5 +19,5 @@ obj-$(CONFIG_MACH_MONARUDO) += board-monarudo-camera.o
 endif
 
 ifdef CONFIG_BT
-obj-$(CONFIG_MACH_MONARUDO) += board-monarudo-rfkill.o  htc_4335_wl_reg.o
+obj-$(CONFIG_MACH_MONARUDO) += board-monarudo-rfkill.o
 endif

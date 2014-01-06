@@ -503,7 +503,7 @@ static struct resource resources_qup_i2c_gsbi4[] = {
 		.end	= GSBI4_QUP_IRQ,
 		.flags	= IORESOURCE_IRQ,
 	},
-#ifdef CONFIG_MACH_M7_UL
+#if defined(CONFIG_MACH_M7_UL) || defined(CONFIG_MACH_MONARUDO)
 	{
 		.name	= "i2c_clk",
 		.start	= 13,
