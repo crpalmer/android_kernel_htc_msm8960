@@ -346,6 +346,11 @@ static struct pm8xxx_adc_amux monarudo_pm8921_adc_channels_data[] = {
 		ADC_DECIMATION_TYPE2, ADC_SCALE_DEFAULT},
 };
 
+static struct pm8xxx_led_platform_data monarudo_pm8921_leds_pdata = {
+        .num_leds = ARRAY_SIZE(pm8921_led_info),
+        .leds = pm8921_led_info,
+};
+
 static struct pm8xxx_adc_properties monarudo_pm8921_adc_data = {
 	.adc_vdd_reference	= 1800, /* milli-voltage for this adc */
 	.bitresolution		= 15,
@@ -569,6 +574,7 @@ monarudo_pm8921_platform_data __devinitdata = {
 	.pwrkey_pdata	= &monarudo_pm8921_pwrkey_pdata,
 	.leds_pdata		= &apq8064_pm8921_leds_pdata,
 	.misc_pdata		= &monarudo_pm8921_misc_pdata,
+	.leds_pdata		= &monarudo_pm8921_leds_pdata,
 	.adc_pdata		= &monarudo_pm8921_adc_pdata,
 	.charger_pdata		= &pm8921_chg_pdata,
 	.bms_pdata		= &pm8921_bms_pdata,
