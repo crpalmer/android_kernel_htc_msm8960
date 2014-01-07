@@ -97,6 +97,40 @@ static struct platform_device monarudo_reset_keys_device = {
 	.dev.platform_data = &monarudo_reset_keys_pdata,
 };
 
+static uint32_t matrix_inputs_gpio_table_xc[] = {
+	GPIO_CFG(PWR_KEY_MSMz, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+		 GPIO_CFG_2MA),
+	GPIO_CFG(VOL_DOWNz_XC, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+		 GPIO_CFG_2MA),
+	GPIO_CFG(VOL_UPz_XC, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+		 GPIO_CFG_2MA),
+};
+
+static uint32_t matrix_inputs_gpio_table[] = {
+	GPIO_CFG(PWR_KEY_MSMz, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+		 GPIO_CFG_2MA),
+	GPIO_CFG(VOL_DOWNz_XA_XB, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+		 GPIO_CFG_2MA),
+	GPIO_CFG(VOL_UPz_XA_XB, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+		 GPIO_CFG_2MA),
+};
+
+static void monarudo_direct_inputs_gpio(void)
+{
+
+	if (system_rev >= 2) {
+		gpio_tlmm_config(matrix_inputs_gpio_table_xc[0], GPIO_CFG_ENABLE);
+		gpio_tlmm_config(matrix_inputs_gpio_table_xc[1], GPIO_CFG_ENABLE);
+		gpio_tlmm_config(matrix_inputs_gpio_table_xc[2], GPIO_CFG_ENABLE);
+	} else {
+		gpio_tlmm_config(matrix_inputs_gpio_table[0], GPIO_CFG_ENABLE);
+		gpio_tlmm_config(matrix_inputs_gpio_table[1], GPIO_CFG_ENABLE);
+		gpio_tlmm_config(matrix_inputs_gpio_table[2], GPIO_CFG_ENABLE);
+	}
+
+	return;
+}
+
 int __init monarudo_init_keypad(void)
 {
 	if (platform_device_register(&monarudo_reset_keys_device))
@@ -109,6 +143,7 @@ int __init monarudo_init_keypad(void)
 			ARRAY_SIZE(monarudo_keypad_map);
         }
 
+	monarudo_direct_inputs_gpio();
 
 	return platform_device_register(&monarudo_keypad_device);
 }
