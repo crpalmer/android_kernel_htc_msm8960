@@ -292,6 +292,7 @@ extern struct msm_camera_board_info monarudo_camera_board_info_xd;/* HTC_START_S
 void monarudo_init_cam(void);
 
 #define APQ_8064_GSBI1_QUP_I2C_BUS_ID 0
+#define APQ_8064_GSBI2_QUP_I2C_BUS_ID 2
 #define APQ_8064_GSBI3_QUP_I2C_BUS_ID 3
 #define APQ_8064_GSBI4_QUP_I2C_BUS_ID 4
 
@@ -305,6 +306,11 @@ void monarudo_usb_uart_switch(int nvbus);
 
 #ifdef CONFIG_RESET_BY_CABLE_IN
 void reset_dflipflop(void);
+#endif
+
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
+int hdmi_enable_5v(int on);
+extern void hdmi_hpd_feature(int enable);
 #endif
 
 #endif
