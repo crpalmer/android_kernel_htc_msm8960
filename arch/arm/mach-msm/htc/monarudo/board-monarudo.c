@@ -10,15 +10,14 @@
  * GNU General Public License for more details.
  *
  */
+
 #include <linux/kernel.h>
+#include <linux/bitops.h>
 #include <linux/platform_device.h>
+#include <linux/gpio.h>
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/i2c.h>
-#include <linux/mpu.h>
-#include <linux/r3gd20.h>
-#include <linux/akm8963_nst.h>
-#include <linux/bma250.h>
 #include <linux/slimbus/slimbus.h>
 #include <linux/mfd/wcd9xxx/core.h>
 #include <linux/mfd/wcd9xxx/pdata.h>
@@ -33,18 +32,15 @@
 #include <linux/memblock.h>
 #include <linux/msm_thermal.h>
 #include <linux/i2c/atmel_mxt_ts.h>
-#include <linux/input/cyttsp.h>
+#include <linux/cyttsp-qc.h>
 #include <linux/gpio_keys.h>
-#include <linux/proc_fs.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/mmc.h>
 #include <linux/platform_data/qcom_wcnss_device.h>
-#include <linux/synaptics_i2c_rmi.h>
-#include <linux/htc_flashlight.h>
+
 #include <mach/board.h>
-#include <mach/restart.h>
 #include <mach/msm_iomap.h>
 #include <mach/ion.h>
 #include <linux/usb/msm_hsusb.h>
@@ -53,8 +49,6 @@
 #include <mach/msm_spi.h>
 #include "timer.h"
 #include "devices.h"
-#include <linux/gpio.h>
-#include <mach/gpio.h>
 #include <mach/gpiomux.h>
 #include <mach/rpm.h>
 #ifdef CONFIG_ANDROID_PMEM
@@ -71,104 +65,59 @@
 #include <linux/msm_tsens.h>
 #include <mach/msm_xo.h>
 #include <mach/msm_rtb.h>
-#include <linux/fmem.h>
-#include <mach/htc_headset_mgr.h>
-#include <mach/htc_headset_pmic.h>
-#include <mach/htc_headset_one_wire.h>
-#include <linux/mfd/pm8xxx/pm8xxx-vibrator-pwm.h>
-#include <mach/htc_ramdump.h>
-#include <video/msm_hdmi_modes.h>
-
-#ifdef CONFIG_PERFLOCK
-#include <mach/perflock.h>
-#endif
-
-
 #ifdef CONFIG_BT
 #include <mach/msm_serial_hs.h>
 #include <mach/htc_bdaddress.h>
+#include <mach/htc_4335_wl_reg.h>
 #endif
+#include <linux/fmem.h>
+#include <mach/restart.h>
 
 #include "msm_watchdog.h"
 #include "board-monarudo.h"
+#include "clock.h"
 #include "spm.h"
 #include <mach/mpm.h>
 #include "rpm_resources.h"
 #include "pm.h"
 #include "pm-boot.h"
-#include "smd_private.h"
-#include <mach/board_htc.h>
-#include <mach/cable_detect.h>
 #include "devices-msm8x60.h"
+#include "smd_private.h"
+#include "sysmon.h"
+
+#include <linux/pm_qos.h>
+#include <linux/proc_fs.h>
+#include <linux/synaptics_i2c_rmi.h>
+#include <linux/mpu.h>
+#include <linux/r3gd20.h>
+#include <linux/akm8963_nst.h>
+#include <linux/bma250.h>
 #include <linux/cm3629.h>
+#include <linux/htc_flashlight.h>
+#include <linux/leds.h>
+#include <linux/leds-pm8xxx-htc.h>
+#include <linux/mfd/pm8xxx/pm8xxx-vibrator-pwm.h>
 #include <linux/pn544.h>
-#include <linux/tfa9887.h>
-#include <linux/rt5501.h>
-
-#ifdef CONFIG_HTC_BATT_8960
-#include "mach/htc_battery_8960.h"
-#include "mach/htc_battery_cell.h"
-#include "linux/mfd/pm8xxx/pm8921-charger-htc.h"
+#ifdef CONFIG_SERIAL_CIR
+#include <linux/htc_cir.h>
 #endif
-
 #ifdef CONFIG_FB_MSM_HDMI_MHL
 #include <mach/mhl.h>
 #endif
+#include <linux/rt5501.h>
+#include <linux/tfa9887.h>
 
-#ifdef CONFIG_SUPPORT_USB_SPEAKER
-#include <linux/pm_qos.h>
+#ifdef CONFIG_HTC_BATT_8960
+#include <linux/mfd/pm8xxx/pm8921-charger-htc.h>
+#include <mach/htc_battery_8960.h>
+#include <mach/htc_battery_cell.h>
 #endif
-
-extern int gy_type; /* from devices_htc.c */
-
-#define MSM_PMEM_ADSP_SIZE         0x7800000
-#define MSM_PMEM_AUDIO_SIZE        0x4CF000
-#ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
-#define MSM_PMEM_SIZE 0x8200000 /* 130 Mbytes */
-#else
-#define MSM_PMEM_SIZE 0x8200000 /* 130 Mbytes */
-#endif
-
-#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-#define HOLE_SIZE		0x20000
-#define MSM_CONTIG_MEM_SIZE	0x65000
-#ifdef CONFIG_MSM_IOMMU
-#define MSM_ION_MM_SIZE		0x3800000
-#define MSM_ION_SF_SIZE		0
-#define MSM_ION_QSECOM_SIZE	0x780000 /* (7.5MB) */
-#define MSM_ION_HEAP_NUM	8
-#else
-#define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
-#define MSM_ION_SF_SIZE		MSM_PMEM_SIZE + 0x6400000
-#define MSM_ION_QSECOM_SIZE	0x600000 /* (6MB) */
-#define MSM_ION_HEAP_NUM	8
-#endif
-#define MSM_ION_MM_FW_SIZE	(0x200000 - HOLE_SIZE) /* (2MB - 128KB) */
-#define MSM_ION_MFC_SIZE	SZ_8K
-#define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE
-#else
-#define MSM_CONTIG_MEM_SIZE	0x110C000
-#define MSM_ION_HEAP_NUM	1
-#endif
-
-#define APQ8064_FIXED_AREA_START (0xa0000000 - (MSM_ION_MM_FW_SIZE + \
-							HOLE_SIZE))
-#define MAX_FIXED_AREA_SIZE	0x10000000
-#define MSM_MM_FW_SIZE		(0x200000 - HOLE_SIZE)
-#define APQ8064_FW_START	APQ8064_FIXED_AREA_START
-#define MSM_ION_ADSP_SIZE	SZ_8M
-
-#ifdef CONFIG_FB_MSM_HDMI_MHL
-static int hdmi_enable_5v(int on);
-static int hdmi_core_power(int on, int show);
-extern void hdmi_hpd_feature(int enable);
-#endif
-
-#define TFA9887_I2C_SLAVE_ADDR	(0x68 >> 1)
-#define TPA6185_I2C_SLAVE_ADDR	(0xC6 >> 1)
-#define RT5501_I2C_SLAVE_ADDR	(0xF0 >> 1)
-
-unsigned skuid;
+#include <mach/board_htc.h>
+#include <mach/htc_headset_mgr.h>
+#include <mach/htc_headset_pmic.h>
+#include <mach/htc_headset_one_wire.h>
+#include <mach/htc_ramdump.h>
+#include <mach/cable_detect.h>
 
 #define PM8XXX_GPIO_INIT(_gpio, _dir, _buf, _val, _pull, _vin, _out_strength, \
 			_func, _inv, _disable) \
@@ -192,31 +141,43 @@ struct pm8xxx_gpio_init {
 	struct pm_gpio			config;
 };
 
-struct rt5501_platform_data rt5501_data={
-         .gpio_rt5501_spk_en = PM8921_GPIO_PM_TO_SYS(10),
+#define MSM_PMEM_ADSP_SIZE         0x8600000
+#define MSM_PMEM_AUDIO_SIZE        0x4CF000
+#define MSM_PMEM_SIZE              0x0
 
-};
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+#define HOLE_SIZE		0x20000
+#define MSM_ION_MFC_META_SIZE  0x40000 /* 256 Kbytes */
+#define MSM_CONTIG_MEM_SIZE  0x65000
+#ifdef CONFIG_MSM_IOMMU
+#define MSM_ION_MM_SIZE		0x4800000
+#define MSM_ION_SF_SIZE		0
+#define MSM_ION_QSECOM_SIZE	0x780000 /* (7.5MB) */
+#ifdef CONFIG_CMA
+#define MSM_ION_HEAP_NUM	8
+#else
+#define MSM_ION_HEAP_NUM	7
+#endif
+#else
+#define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
+#define MSM_ION_SF_SIZE		MSM_PMEM_SIZE
+#define MSM_ION_QSECOM_SIZE	0x600000 /* (6MB) */
+#define MSM_ION_HEAP_NUM	8
+#endif
+#define MSM_ION_MM_FW_SIZE	(0x200000 - HOLE_SIZE) /* (2MB - 128KB) */
+#define MSM_ION_MFC_SIZE	(SZ_8K + MSM_ION_MFC_META_SIZE)
+#define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE
+#else
+#define MSM_CONTIG_MEM_SIZE  0x110C000
+#define MSM_ION_HEAP_NUM	1
+#endif
 
-static struct i2c_board_info msm_i2c_gsbi1_rt5501_info[] = {
-	{
-		I2C_BOARD_INFO( RT5501_I2C_NAME, RT5501_I2C_SLAVE_ADDR),
-		.platform_data = &rt5501_data,
-	},
-};
-
-static struct i2c_board_info msm_i2c_gsbi1_tfa9887_info[] = {
-	{
-		I2C_BOARD_INFO(TFA9887_I2C_NAME, TFA9887_I2C_SLAVE_ADDR)
-	},
-};
-
-#define        GPIO_EXPANDER_IRQ_BASE  (PM8821_IRQ_BASE + PM8821_NR_IRQS)
-#define        GPIO_EXPANDER_GPIO_BASE (PM8821_MPP_BASE + PM8821_NR_MPPS)
-#define        GPIO_EPM_EXPANDER_BASE  GPIO_EXPANDER_GPIO_BASE
-
-enum {
-       SX150X_EPM,
-};
+#define APQ8064_FIXED_AREA_START (0xa0000000 - (MSM_ION_MM_FW_SIZE + \
+							HOLE_SIZE))
+#define MAX_FIXED_AREA_SIZE	0x10000000
+#define MSM_MM_FW_SIZE		(0x200000 - HOLE_SIZE)
+#define APQ8064_FW_START	APQ8064_FIXED_AREA_START
+#define MSM_ION_ADSP_SIZE	SZ_8M
 
 #ifdef CONFIG_KERNEL_MSM_CONTIG_MEM_REGION
 static unsigned msm_contig_mem_size = MSM_CONTIG_MEM_SIZE;
@@ -277,7 +238,6 @@ static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.cached = 0,
 	.memory_type = MEMTYPE_EBI1,
 };
-
 static struct platform_device apq8064_android_pmem_adsp_device = {
 	.name = "android_pmem",
 	.id = 2,
@@ -299,6 +259,13 @@ static struct platform_device apq8064_android_pmem_audio_device = {
 #endif /* CONFIG_MSM_MULTIMEDIA_USE_ION */
 #endif /* CONFIG_ANDROID_PMEM */
 
+#ifdef CONFIG_BATTERY_BCL
+static struct platform_device battery_bcl_device = {
+	.name = "battery_current_limit",
+	.id = -1,
+	};
+#endif
+
 struct fmem_platform_data apq8064_fmem_pdata = {
 };
 
@@ -313,11 +280,6 @@ static struct memtype_reserve apq8064_reserve_table[] __initdata = {
 	},
 };
 
-#ifdef CONFIG_I2C
-#define MSM8064_GSBI2_QUP_I2C_BUS_ID 2
-#define MSM8064_GSBI3_QUP_I2C_BUS_ID 3
-#endif
-
 static void __init reserve_rtb_memory(void)
 {
 #if defined(CONFIG_MSM_RTB)
@@ -326,6 +288,7 @@ static void __init reserve_rtb_memory(void)
 			apq8064_rtb_pdata.size);
 #endif
 }
+
 
 static void __init size_pmem_devices(void)
 {
@@ -343,8 +306,6 @@ static void __init size_pmem_devices(void)
 static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 {
 	apq8064_reserve_table[p->memory_type].size += p->size;
-	pr_info("mem_map: contig_mem reserved with size 0x%x in pool\n",
-			msm_contig_mem_size);
 }
 #endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
 #endif /*CONFIG_ANDROID_PMEM*/
@@ -358,6 +319,8 @@ static void __init reserve_pmem_memory(void)
 	reserve_memory_for(&android_pmem_audio_pdata);
 #endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
 	apq8064_reserve_table[MEMTYPE_EBI1].size += msm_contig_mem_size;
+	pr_info("mem_map: contig_mem reserved with size 0x%x in pool\n",
+			msm_contig_mem_size);
 #endif /*CONFIG_ANDROID_PMEM*/
 }
 
@@ -370,15 +333,18 @@ static int apq8064_paddr_to_memtype(unsigned int paddr)
 
 #ifdef CONFIG_ION_MSM
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-static struct ion_cp_heap_pdata cp_mm_monarudo_ion_pdata = {
+static struct ion_cp_heap_pdata cp_mm_apq8064_ion_pdata = {
 	.permission_type = IPT_TYPE_MM_CARVEOUT,
 	.align = PAGE_SIZE,
 	.reusable = FMEM_ENABLED,
 	.mem_is_fmem = FMEM_ENABLED,
 	.fixed_position = FIXED_MIDDLE,
+#ifdef CONFIG_CMA
+	.is_cma = 1,
+#endif
 };
 
-static struct ion_cp_heap_pdata cp_mfc_monarudo_ion_pdata = {
+static struct ion_cp_heap_pdata cp_mfc_apq8064_ion_pdata = {
 	.permission_type = IPT_TYPE_MFC_SHAREDMEM,
 	.align = PAGE_SIZE,
 	.reusable = 0,
@@ -386,13 +352,13 @@ static struct ion_cp_heap_pdata cp_mfc_monarudo_ion_pdata = {
 	.fixed_position = FIXED_HIGH,
 };
 
-static struct ion_co_heap_pdata co_monarudo_ion_pdata = {
+static struct ion_co_heap_pdata co_apq8064_ion_pdata = {
 	.adjacent_mem_id = INVALID_HEAP_ID,
 	.align = PAGE_SIZE,
 	.mem_is_fmem = 0,
 };
 
-static struct ion_co_heap_pdata fw_co_monarudo_ion_pdata = {
+static struct ion_co_heap_pdata fw_co_apq8064_ion_pdata = {
 	.adjacent_mem_id = ION_CP_MM_HEAP_ID,
 	.align = SZ_128K,
 	.mem_is_fmem = FMEM_ENABLED,
@@ -400,6 +366,38 @@ static struct ion_co_heap_pdata fw_co_monarudo_ion_pdata = {
 };
 #endif
 
+static u64 msm_dmamask = DMA_BIT_MASK(32);
+
+static struct platform_device ion_mm_heap_device = {
+	.name = "ion-mm-heap-device",
+	.id = -1,
+	.dev = {
+		.dma_mask = &msm_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+	}
+};
+
+#ifdef CONFIG_CMA
+static struct platform_device ion_adsp_heap_device = {
+	.name = "ion-adsp-heap-device",
+	.id = -1,
+	.dev = {
+		.dma_mask = &msm_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+	}
+};
+#endif
+/**
+ * These heaps are listed in the order they will be allocated. Due to
+ * video hardware restrictions and content protection the FW heap has to
+ * be allocated adjacent (below) the MM heap and the MFC heap has to be
+ * allocated after the MM heap to ensure MFC heap is not more than 256MB
+ * away from the base address of the FW heap.
+ * However, the order of FW heap and MM heap doesn't matter since these
+ * two heaps are taken care of by separate code to ensure they are adjacent
+ * to each other.
+ * Don't swap the order unless you know what you are doing!
+ */
 struct ion_platform_heap apq8064_heaps[] = {
 		{
 			.id	= ION_SYSTEM_HEAP_ID,
@@ -413,7 +411,8 @@ struct ion_platform_heap apq8064_heaps[] = {
 			.name	= ION_MM_HEAP_NAME,
 			.size	= MSM_ION_MM_SIZE,
 			.memory_type = ION_EBI_TYPE,
-			.extra_data = (void *) &cp_mm_monarudo_ion_pdata,
+			.extra_data = (void *) &cp_mm_apq8064_ion_pdata,
+			.priv	= &ion_mm_heap_device.dev
 		},
 		{
 			.id	= ION_MM_FIRMWARE_HEAP_ID,
@@ -421,7 +420,7 @@ struct ion_platform_heap apq8064_heaps[] = {
 			.name	= ION_MM_FIRMWARE_HEAP_NAME,
 			.size	= MSM_ION_MM_FW_SIZE,
 			.memory_type = ION_EBI_TYPE,
-			.extra_data = (void *) &fw_co_monarudo_ion_pdata,
+			.extra_data = (void *) &fw_co_apq8064_ion_pdata,
 		},
 		{
 			.id	= ION_CP_MFC_HEAP_ID,
@@ -429,16 +428,18 @@ struct ion_platform_heap apq8064_heaps[] = {
 			.name	= ION_MFC_HEAP_NAME,
 			.size	= MSM_ION_MFC_SIZE,
 			.memory_type = ION_EBI_TYPE,
-			.extra_data = (void *) &cp_mfc_monarudo_ion_pdata,
+			.extra_data = (void *) &cp_mfc_apq8064_ion_pdata,
 		},
+#ifndef CONFIG_MSM_IOMMU
 		{
 			.id	= ION_SF_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
 			.name	= ION_SF_HEAP_NAME,
 			.size	= MSM_ION_SF_SIZE,
 			.memory_type = ION_EBI_TYPE,
-			.extra_data = (void *) &co_monarudo_ion_pdata,
+			.extra_data = (void *) &co_apq8064_ion_pdata,
 		},
+#endif
 		{
 			.id	= ION_IOMMU_HEAP_ID,
 			.type	= ION_HEAP_TYPE_IOMMU,
@@ -450,7 +451,7 @@ struct ion_platform_heap apq8064_heaps[] = {
 			.name	= ION_QSECOM_HEAP_NAME,
 			.size	= MSM_ION_QSECOM_SIZE,
 			.memory_type = ION_EBI_TYPE,
-			.extra_data = (void *) &co_monarudo_ion_pdata,
+			.extra_data = (void *) &co_apq8064_ion_pdata,
 		},
 		{
 			.id	= ION_AUDIO_HEAP_ID,
@@ -458,10 +459,20 @@ struct ion_platform_heap apq8064_heaps[] = {
 			.name	= ION_AUDIO_HEAP_NAME,
 			.size	= MSM_ION_AUDIO_SIZE,
 			.memory_type = ION_EBI_TYPE,
-			.extra_data = (void *) &co_monarudo_ion_pdata,
+			.extra_data = (void *) &co_apq8064_ion_pdata,
+		},
+#ifdef CONFIG_CMA
+		{
+			.id     = ION_ADSP_HEAP_ID,
+			.type   = ION_HEAP_TYPE_DMA,
+			.name   = ION_ADSP_HEAP_NAME,
+			.size   = MSM_ION_ADSP_SIZE,
+			.memory_type = ION_EBI_TYPE,
+			.extra_data = (void *) &co_apq8064_ion_pdata,
+			.priv = &ion_adsp_heap_device.dev,
 		},
 #endif
-
+#endif
 };
 
 static struct ion_platform_data apq8064_ion_pdata = {
@@ -534,19 +545,18 @@ static void __init reserve_ion_memory(void)
 	unsigned int middle_use_cma = 0;
 	unsigned int high_use_cma = 0;
 
+
 	fixed_low_size = 0;
 	fixed_middle_size = 0;
 	fixed_high_size = 0;
 
 	cma_alignment = PAGE_SIZE << max(MAX_ORDER, pageblock_order);
 
-	/* We only support 1 reusable heap. Check if more than one heap
-	 * is specified as reusable and set as non-reusable if found.
-	 */
 	for (i = 0; i < apq8064_ion_pdata.nr; ++i) {
 		struct ion_platform_heap *heap =
 			&(apq8064_ion_pdata.heaps[i]);
 		int use_cma = 0;
+
 
 		if (heap->extra_data) {
 			int fixed_position = NOT_FIXED;
@@ -554,15 +564,14 @@ static void __init reserve_ion_memory(void)
 			switch ((int)heap->type) {
 			case ION_HEAP_TYPE_CP:
 				if (((struct ion_cp_heap_pdata *)
-				    heap->extra_data)->is_cma) {
+					heap->extra_data)->is_cma) {
 					heap->size = ALIGN(heap->size,
-					   cma_alignment);
+						cma_alignment);
 					use_cma = 1;
 				}
 				fixed_position = ((struct ion_cp_heap_pdata *)
 					heap->extra_data)->fixed_position;
 				break;
-
 			case ION_HEAP_TYPE_DMA:
 				use_cma = 1;
 				/* Purposely fall through here */
@@ -598,6 +607,7 @@ static void __init reserve_ion_memory(void)
 					heap->size,
 					0,
 					0xb0000000);
+
 			}
 		}
 	}
@@ -618,7 +628,7 @@ static void __init reserve_ion_memory(void)
 	} else {
 		BUG_ON(!IS_ALIGNED(fixed_low_size + HOLE_SIZE, SECTION_SIZE));
 		ret = memblock_remove(fixed_low_start,
-				fixed_low_size + HOLE_SIZE);
+				      fixed_low_size + HOLE_SIZE);
 		pr_info("mem_map: fixed_low_area reserved at 0x%lx with size \
 				0x%x\n", fixed_low_start,
 				fixed_low_size + HOLE_SIZE);
@@ -627,8 +637,8 @@ static void __init reserve_ion_memory(void)
 
 	fixed_middle_start = fixed_low_start + fixed_low_size + HOLE_SIZE;
 	if (middle_use_cma) {
-                BUG_ON(!IS_ALIGNED(fixed_middle_start, cma_alignment));
-                BUG_ON(!IS_ALIGNED(fixed_middle_size, cma_alignment));
+		BUG_ON(!IS_ALIGNED(fixed_middle_start, cma_alignment));
+		BUG_ON(!IS_ALIGNED(fixed_middle_size, cma_alignment));
 	} else {
 		BUG_ON(!IS_ALIGNED(fixed_middle_size, SECTION_SIZE));
 		ret = memblock_remove(fixed_middle_start, fixed_middle_size);
@@ -703,6 +713,86 @@ static void __init reserve_ion_memory(void)
 #endif
 }
 
+static void __init reserve_mdp_memory(void)
+{
+	monarudo_mdp_writeback(apq8064_reserve_table);
+}
+
+static void __init reserve_cache_dump_memory(void)
+{
+#ifdef CONFIG_MSM_CACHE_DUMP
+	unsigned int total;
+
+	total = apq8064_cache_dump_pdata.l1_size +
+		apq8064_cache_dump_pdata.l2_size;
+	apq8064_reserve_table[MEMTYPE_EBI1].size += total;
+	pr_info("mem_map: cache_dump reserved with size 0x%x in pool\n",
+			total);
+#endif
+}
+
+static void __init reserve_mpdcvs_memory(void)
+{
+	apq8064_reserve_table[MEMTYPE_EBI1].size += SZ_32K;
+}
+
+static void __init apq8064_calculate_reserve_sizes(void)
+{
+	size_pmem_devices();
+	reserve_pmem_memory();
+	reserve_ion_memory();
+	reserve_mdp_memory();
+	reserve_rtb_memory();
+	reserve_cache_dump_memory();
+	reserve_mpdcvs_memory();
+}
+
+static struct reserve_info apq8064_reserve_info __initdata = {
+	.memtype_reserve_table = apq8064_reserve_table,
+	.calculate_reserve_sizes = apq8064_calculate_reserve_sizes,
+	.reserve_fixed_area = apq8064_reserve_fixed_area,
+	.paddr_to_memtype = apq8064_paddr_to_memtype,
+};
+
+static void __init monarudo_reserve(void)
+{
+	msm_reserve();
+}
+
+static void __init monarudo_early_reserve(void)
+{
+	reserve_info = &apq8064_reserve_info;
+}
+#define TFA9887_I2C_SLAVE_ADDR	(0x68 >> 1)
+#define TPA6185_I2C_SLAVE_ADDR	(0xC6 >> 1)
+#define RT5501_I2C_SLAVE_ADDR	(0xF0 >> 1)
+
+struct rt5501_platform_data rt5501_data={
+         .gpio_rt5501_spk_en = PM8921_GPIO_PM_TO_SYS(10),
+
+};
+
+static struct i2c_board_info msm_i2c_gsbi1_rt5501_info[] = {
+	{
+		I2C_BOARD_INFO( RT5501_I2C_NAME, RT5501_I2C_SLAVE_ADDR),
+		.platform_data = &rt5501_data,
+	},
+};
+
+static struct i2c_board_info msm_i2c_gsbi1_tfa9887_info[] = {
+	{
+		I2C_BOARD_INFO(TFA9887_I2C_NAME, TFA9887_I2C_SLAVE_ADDR)
+	},
+};
+
+#define        GPIO_EXPANDER_IRQ_BASE  (PM8821_IRQ_BASE + PM8821_NR_IRQS)
+#define        GPIO_EXPANDER_GPIO_BASE (PM8821_MPP_BASE + PM8821_NR_MPPS)
+#define        GPIO_EPM_EXPANDER_BASE  GPIO_EXPANDER_GPIO_BASE
+
+enum {
+       SX150X_EPM,
+};
+
 #ifdef CONFIG_BT
 static struct msm_serial_hs_platform_data msm_uart_dm6_pdata = {
 #ifdef CONFIG_SERIAL_MSM_HS
@@ -727,49 +817,6 @@ static struct platform_device monarudo_rfkill = {
 	.id = -1,
 };
 #endif
-
-static void __init reserve_mdp_memory(void)
-{
-	monarudo_mdp_writeback(apq8064_reserve_table);
-}
-
-static void __init reserve_mpdcvs_memory(void)
-{
-	apq8064_reserve_table[MEMTYPE_EBI1].size += SZ_32K;
-}
-
-static void __init apq8064_calculate_reserve_sizes(void)
-{
-	size_pmem_devices();
-	reserve_pmem_memory();
-	reserve_ion_memory();
-	reserve_mdp_memory();
-	reserve_rtb_memory();
-	reserve_mpdcvs_memory();
-}
-
-static struct reserve_info apq8064_reserve_info __initdata = {
-	.memtype_reserve_table = apq8064_reserve_table,
-	.calculate_reserve_sizes = apq8064_calculate_reserve_sizes,
-	.reserve_fixed_area = apq8064_reserve_fixed_area,
-	.paddr_to_memtype = apq8064_paddr_to_memtype,
-};
-
-int __init parse_tag_memsize(const struct tag *tags);
-static unsigned int mem_size_mb;
-
-static void __init monarudo_reserve(void)
-{
-	if (mem_size_mb == 64)
-		return;
-
-	msm_reserve();
-}
-
-static void __init monarudo_early_reserve(void)
-{
-	reserve_info = &apq8064_reserve_info;
-}
 
 #ifdef CONFIG_HTC_BATT_8960
 static int critical_alarm_voltage_mv[] = {3000, 3100, 3200, 3400};
@@ -3502,7 +3549,6 @@ static struct resource hdmi_msm_resources[] = {
 	},
 };
 
-static int hdmi_enable_5v(int on);
 static int hdmi_core_power(int on, int show);
 /*static int hdmi_cec_power(int on);*/
 
@@ -3520,7 +3566,7 @@ static struct platform_device hdmi_msm_device = {
 	.dev.platform_data = &hdmi_msm_data,
 };
 
-static int hdmi_enable_5v(int on)
+int hdmi_enable_5v(int on)
 {
 	static int prev_on = 0;
 	int rc;
@@ -3959,7 +4005,7 @@ static struct mpu3050_platform_data mpu3050_data = {
 
 	.accel = {
 		.get_slave_descr = get_accel_slave_descr,
-		.adapt_num = MSM8064_GSBI2_QUP_I2C_BUS_ID, /* The i2c bus to which the mpu device is connected */
+		.adapt_num = APQ_8064_GSBI2_QUP_I2C_BUS_ID,
 		.bus = EXT_SLAVE_BUS_SECONDARY,
 		.address = 0x30 >> 1,
 			.orientation = { -1, 0,  0,
@@ -3969,7 +4015,7 @@ static struct mpu3050_platform_data mpu3050_data = {
 	},
 	.compass = {
 		.get_slave_descr = get_compass_slave_descr,
-		.adapt_num = MSM8064_GSBI2_QUP_I2C_BUS_ID, /* The i2c bus to which the mpu device is connected */
+		.adapt_num = APQ_8064_GSBI2_QUP_I2C_BUS_ID,
 		.bus = EXT_SLAVE_BUS_PRIMARY,
 		.address = 0x1A >> 1,
 			.orientation = { -1, 0,  0,
@@ -4029,19 +4075,19 @@ static struct i2c_registry monarudo_i2c_devices[] __initdata = {
 	},
 	{
 		I2C_SURF | I2C_FFA,
-		MSM8064_GSBI2_QUP_I2C_BUS_ID,
+		APQ_8064_GSBI2_QUP_I2C_BUS_ID,
 		i2c_CM36282_devices,
 		ARRAY_SIZE(i2c_CM36282_devices),
 	},
 	{
 		I2C_SURF | I2C_FFA,
-		MSM8064_GSBI2_QUP_I2C_BUS_ID,
+		APQ_8064_GSBI2_QUP_I2C_BUS_ID,
 		pn544_i2c_boardinfo,
 		ARRAY_SIZE(pn544_i2c_boardinfo),
 	},
 	{
 		I2C_SURF | I2C_FFA,
-		MSM8064_GSBI2_QUP_I2C_BUS_ID,
+		APQ_8064_GSBI2_QUP_I2C_BUS_ID,
 		pwm_i2c_devices,
 		ARRAY_SIZE(pwm_i2c_devices),
 	},
@@ -4072,6 +4118,8 @@ void reset_dflipflop(void)
 	pr_info("[CABLE] Restore D Flip-Flop\n");
 }
 #endif
+
+extern int gy_type;
 
 static void __init register_i2c_devices(void)
 {
@@ -4115,14 +4163,14 @@ static void __init register_i2c_devices(void)
 	/* XB */
 	if (system_rev <= XB) {
 		if((I2C_SURF | I2C_FFA) & mach_mask) {
-			i2c_register_board_info(MSM8064_GSBI2_QUP_I2C_BUS_ID,
+			i2c_register_board_info(APQ_8064_GSBI2_QUP_I2C_BUS_ID,
 				i2c_tps61310_flashlight, ARRAY_SIZE(i2c_tps61310_flashlight));
 		}
 	}
 	/* XC or later */
 	if (system_rev > XB) {
 		if((I2C_SURF | I2C_FFA) & mach_mask) {
-			i2c_register_board_info(MSM8064_GSBI2_QUP_I2C_BUS_ID,
+			i2c_register_board_info(APQ_8064_GSBI2_QUP_I2C_BUS_ID,
 				i2c_tps61310_flashlight_XC, ARRAY_SIZE(i2c_tps61310_flashlight_XC));
 		}
 	}
@@ -4145,11 +4193,11 @@ static void __init register_i2c_devices(void)
 
 #endif
 	if (gy_type == 2) {
-		i2c_register_board_info(MSM8064_GSBI2_QUP_I2C_BUS_ID,
+		i2c_register_board_info(APQ_8064_GSBI2_QUP_I2C_BUS_ID,
 				motion_sensor_gsbi_2_info,
 				ARRAY_SIZE(motion_sensor_gsbi_2_info));
 	} else {
-		i2c_register_board_info(MSM8064_GSBI2_QUP_I2C_BUS_ID,
+		i2c_register_board_info(APQ_8064_GSBI2_QUP_I2C_BUS_ID,
 				mpu3050_GSBI12_boardinfo,
 				ARRAY_SIZE(mpu3050_GSBI12_boardinfo));
 	}
@@ -4386,6 +4434,10 @@ static void __init monarudo_cdp_init(void)
 #define SIZE_ADDR3      (768 * 1024 * 1024)
 
 #define DDR_1GB_SIZE      (1024 * 1024 * 1024)
+
+extern int parse_tag_memsize(const struct tag *tags);
+unsigned skuid;
+static unsigned int mem_size_mb;
 
 static void __init monarudo_fixup(struct tag *tags, char **cmdline, struct meminfo *mi)
 {
