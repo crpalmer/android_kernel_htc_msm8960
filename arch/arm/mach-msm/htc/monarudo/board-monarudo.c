@@ -17,7 +17,7 @@
 #include <linux/i2c.h>
 #include <linux/mpu.h>
 #include <linux/r3gd20.h>
-#include <linux/akm8963.h>
+#include <linux/akm8963_nst.h>
 #include <linux/bma250.h>
 #include <linux/slimbus/slimbus.h>
 #include <linux/mfd/wcd9xxx/core.h>
@@ -102,9 +102,8 @@
 #include "devices-msm8x60.h"
 #include <linux/cm3629.h>
 #include <linux/pn544.h>
-#include <mach/tfa9887.h>
-#include <mach/tpa6185.h>
-#include <mach/rt5501.h>
+#include <linux/tfa9887.h>
+#include <linux/rt5501.h>
 
 #ifdef CONFIG_HTC_BATT_8960
 #include "mach/htc_battery_8960.h"
@@ -193,23 +192,10 @@ struct pm8xxx_gpio_init {
 	struct pm_gpio			config;
 };
 
-struct tpa6185_platform_data tpa6185_data={
-         .gpio_tpa6185_spk_en = PM8921_GPIO_PM_TO_SYS(10),
-
-};
-
 struct rt5501_platform_data rt5501_data={
          .gpio_rt5501_spk_en = PM8921_GPIO_PM_TO_SYS(10),
 
 };
-
-static struct i2c_board_info msm_i2c_gsbi1_tpa6185_info[] = {
-	{
-		I2C_BOARD_INFO(TPA6185_I2C_NAME, TPA6185_I2C_SLAVE_ADDR),
-		.platform_data = &tpa6185_data,
-	},
-};
-
 
 static struct i2c_board_info msm_i2c_gsbi1_rt5501_info[] = {
 	{
@@ -2964,7 +2950,7 @@ static struct mdm_vddmin_resource mdm_vddmin_rscs = {
 
 static struct mdm_platform_data mdm_platform_data = {
 	.mdm_version = "3.0",
-	.ramdump_delay_ms = 2000,
+	.ramdump_delay_ms = 2001,
 	.vddmin_resource = &mdm_vddmin_rscs,
 	.peripheral_platform_device = &apq8064_device_hsic_host,
 	.ramdump_timeout_ms = 120000,
@@ -3606,32 +3592,6 @@ static int hdmi_core_power(int on, int show)
 }
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
 
-static struct ramdump_platform_data ramdump_data_2G = {
-	.count = 1,
-	.region = {
-		{
-			.start	= 0xA0000000,
-			.size	= 0x60000000,
-		},
-	}
-};
-
-static struct ramdump_platform_data ramdump_data_128M = {
-	.count = 1,
-	.region = {
-		{
-			.start	= 0xA0000000,
-			.size	= 0x8000000,
-		},
-	}
-};
-
-struct platform_device device_htc_ramdump = {
-	.name		= "htc_ramdump",
-	.id		= 0,
-	.dev = {.platform_data = &ramdump_data_128M},
-};
-
 static struct platform_device *common_devices[] __initdata = {
 	&apq8064_device_acpuclk,
 	&apq8064_device_dmov,
@@ -4064,12 +4024,6 @@ static struct i2c_registry monarudo_i2c_devices[] __initdata = {
 	{
 		I2C_SURF | I2C_FFA,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
-		msm_i2c_gsbi1_tpa6185_info,
-		ARRAY_SIZE(msm_i2c_gsbi1_tpa6185_info),
-	},
-	{
-		I2C_SURF | I2C_FFA,
-		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 		msm_i2c_gsbi1_rt5501_info,
 		ARRAY_SIZE(msm_i2c_gsbi1_rt5501_info),
 	},
@@ -4274,7 +4228,6 @@ static void __init monarudo_cdp_init(void)
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
 
-        htc_add_ramconsole_devices();
 	platform_device_register(&msm_gpio_device);
 
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
@@ -4353,12 +4306,6 @@ static void __init monarudo_cdp_init(void)
 #endif /* CONFIG_HTC_BATT_8960 */
 
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
-
-	if(board_mfg_mode() == 9) {
-		if (board_fullramdump_flag())
-			device_htc_ramdump.dev.platform_data = &ramdump_data_2G;
-		platform_device_register(&device_htc_ramdump);
-	}
 
 	if (system_rev < XC)
 		platform_device_register(&vibrator_pwm_device);

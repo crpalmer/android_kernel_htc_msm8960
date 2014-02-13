@@ -32,9 +32,8 @@
 #include "../sound/soc/msm/msm-compr-q6.h"
 #include "../sound/soc/codecs/wcd9310.h"
 #include <mach/htc_acoustic_8960.h>
-#include <mach/tfa9887.h>
-#include <mach/tpa6185.h>
-#include <mach/rt5501.h>
+#include <linux/tfa9887.h>
+#include <linux/rt5501.h>
 #include "board-monarudo.h"
 
 #define PM8921_GPIO_BASE		NR_GPIO_IRQS
@@ -505,10 +504,6 @@ static void msm_ext_spk_power_amp_on(u32 spk)
 			(msm_hs_pamp & HS_AMP_NEG)) {
 			
 			pr_info("hs amp on++");
-			if (query_tpa6185()) {
-				gpio_direction_output(PM8921_GPIO_PM_TO_SYS(10), 1);
-				set_handset_amp(1);
-			}
 
 			if (query_rt5501())
 				set_rt5501_amp(1);
@@ -592,10 +587,6 @@ static void msm_ext_spk_power_amp_off(u32 spk)
 
 		
 		pr_info("hs amp off ++");
-		if (query_tpa6185()) {
-			set_handset_amp(0);
-			gpio_direction_output(PM8921_GPIO_PM_TO_SYS(10), 0);
-		}
 
 		if (query_rt5501())
 			set_rt5501_amp(0);
