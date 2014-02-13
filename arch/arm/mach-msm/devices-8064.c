@@ -53,7 +53,7 @@
 
 /* Address of GSBI blocks */
 #define MSM_GSBI1_PHYS		0x12440000
-#ifdef CONFIG_MACH_M7_UL
+#if defined(CONFIG_MACH_M7_UL) || defined(CONFIG_MACH_MONARUDO)
 #define MSM_GSBI2_PHYS		0x12480000
 #else
 #define MSM_GSBI2_PHYS		0x13440000
