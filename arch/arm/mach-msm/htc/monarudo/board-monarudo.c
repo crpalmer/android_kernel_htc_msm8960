@@ -1549,7 +1549,6 @@ static int phy_init_seq[] = {
        -1
 };
 
-#ifdef CONFIG_SUPPORT_USB_SPEAKER
 struct pm_qos_request pm_qos_req_dma;
 void msm_hsusb_setup_gpio(enum usb_otg_state state)
 {
@@ -1565,7 +1564,6 @@ void msm_hsusb_setup_gpio(enum usb_otg_state state)
 		break;
 	}
 }
-#endif
 
 #define PMIC_GPIO_DP		27    /* PMIC GPIO for D+ change */
 #define PMIC_GPIO_DP_IRQ	PM8921_GPIO_IRQ(PM8921_IRQ_BASE, PMIC_GPIO_DP)
@@ -1581,9 +1579,7 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.power_budget		= 750,
 	.bus_scale_table        = &usb_bus_scale_pdata,
 	.phy_init_seq           = phy_init_seq,
-#ifdef CONFIG_SUPPORT_USB_SPEAKER
 	.setup_gpio		= msm_hsusb_setup_gpio,
-#endif
 	.mpm_otgsessvld_int	= MSM_MPM_PIN_USB1_OTGSESSVLD,
 };
 
@@ -4399,9 +4395,7 @@ static void __init monarudo_cdp_init(void)
 
 	monarudo_init_keypad();
 
-#ifdef CONFIG_SUPPORT_USB_SPEAKER
 	pm_qos_add_request(&pm_qos_req_dma, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
-#endif
 	msm_rotator_set_split_iommu_domain();
 	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
 
