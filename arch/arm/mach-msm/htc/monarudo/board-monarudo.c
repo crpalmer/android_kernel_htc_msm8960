@@ -1565,11 +1565,42 @@ void msm_hsusb_setup_gpio(enum usb_otg_state state)
 	}
 }
 
-#define PMIC_GPIO_DP		27    /* PMIC GPIO for D+ change */
-#define PMIC_GPIO_DP_IRQ	PM8921_GPIO_IRQ(PM8921_IRQ_BASE, PMIC_GPIO_DP)
+#define BOOST_5V	"ext_5v"
+static int msm_hsusb_vbus_power(bool on)
+{
+	static struct regulator *reg_boost_5v = NULL;
+	static int prev_on;
+	int rc;
+
+	if (on == prev_on)
+		return 0;
+
+	if (!reg_boost_5v)
+		_GET_REGULATOR(reg_boost_5v, BOOST_5V);
+
+	if (on) {
+		rc = regulator_enable(reg_boost_5v);
+		if (rc) {
+			pr_err("'%s' regulator enable failed, rc=%d\n",
+				BOOST_5V, rc);
+			return rc;
+		}
+	} else {
+		rc = regulator_disable(reg_boost_5v);
+		if (rc)
+			pr_warning("'%s' regulator disable failed, rc=%d\n",
+				BOOST_5V, rc);
+	}
+
+	pr_info("%s(%s): success\n", __func__, on?"on":"off");
+
+	prev_on = on;
+
+	return 0;
+}
+
 #define MSM_MPM_PIN_USB1_OTGSESSVLD	40
 
-static int msm_hsusb_vbus_power(bool on);
 static struct msm_otg_platform_data msm_otg_pdata = {
 	.mode			= USB_OTG,
 	.otg_control		= OTG_PMIC_CONTROL,
@@ -1591,6 +1622,8 @@ static struct msm_usb_host_platform_data msm_ehci_host_pdata3 = {
 static struct msm_usb_host_platform_data msm_ehci_host_pdata4;
 #endif
 
+#define PMIC_GPIO_DP		27    /* PMIC GPIO for D+ change */
+#define PMIC_GPIO_DP_IRQ	PM8921_GPIO_IRQ(PM8921_IRQ_BASE, PMIC_GPIO_DP)
 static void __init apq8064_ehci_host_init(void)
 {
 	if (machine_is_apq8064_liquid() || machine_is_mpq8064_cdp() ||
@@ -3439,40 +3472,6 @@ static struct platform_device monarudo_device_rpm_regulator __devinitdata = {
 		.platform_data = &monarudo_rpm_regulator_pdata,
 	},
 };
-
-#define BOOST_5V	"ext_5v"
-static struct regulator *reg_boost_5v = NULL;
-
-static int msm_hsusb_vbus_power(bool on)
-{
-	static int prev_on;
-	int rc;
-	if (on == prev_on)
-		return 0;
-
-	if (!reg_boost_5v)
-		_GET_REGULATOR(reg_boost_5v, BOOST_5V);
-
-	if (on) {
-	rc = regulator_enable(reg_boost_5v);
-		if (rc) {
-			pr_err("'%s' regulator enable failed, rc=%d\n",
-				BOOST_5V, rc);
-			return rc;
-		}
-	} else {
-		rc = regulator_disable(reg_boost_5v);
-		if (rc)
-			pr_warning("'%s' regulator disable failed, rc=%d\n",
-				BOOST_5V, rc);
-	}
-
-	pr_info("%s(%s): success\n", __func__, on?"on":"off");
-
-	prev_on = on;
-
-	return 0;
-}
 
 static struct pm8xxx_vibrator_pwm_platform_data pm8xxx_vib_pwm_pdata = {
 	.initial_vibrate_ms = 0,
