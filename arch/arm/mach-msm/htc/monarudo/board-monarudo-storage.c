@@ -322,12 +322,19 @@ static unsigned int monarudo_wifi_status(struct device *dev)
 	return monarudo_wifi_cd;
 }
 
+static u32 monarudo_wifi_setup_power(struct device *dv, unsigned int vdd)
+{
+	/* Dummy function since pads are used for power */
+	return 0;
+}
+
 static unsigned int wifi_sup_clk_rates[] = {
 	400000, 24000000, 48000000
 };
 static struct mmc_platform_data monarudo_wifi_data = {
 	.ocr_mask               = MMC_VDD_28_29,
 	.status                 = monarudo_wifi_status,
+	.translate_vdd		= monarudo_wifi_setup_power,
 	.register_status_notify = monarudo_wifi_status_register,
 	.embedded_sdio          = &monarudo_wifi_emb_data,
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
