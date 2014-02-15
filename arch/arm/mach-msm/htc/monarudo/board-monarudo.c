@@ -4273,6 +4273,8 @@ static void __init monarudo_cdp_init(void)
 	int rc = 0;
 	struct kobject *properties_kobj;
 
+	htc_add_ramconsole_devices();
+
 	pr_info("%s: init starts\r\n", __func__);
 
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
